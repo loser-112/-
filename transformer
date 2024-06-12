@@ -1,0 +1,52 @@
+from tensorflow.keras import layers, models, Model
+import tensorflow as tf
+
+def transformer_block(x, head_size, num_heads, ff_dim, dropout=0):
+    # 层归一化
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    # 多头自注意力
+    x = layers.MultiHeadAttention(key_dim=head_size, num_heads=num_heads, dropout=dropout)(x, x)
+    x = layers.Dropout(dropout)(x)
+    res = x + x
+    
+    # 前馈网络
+    x = layers.LayerNormalization(epsilon=1e-6)(res)
+    x = layers.Conv1D(filters=ff_dim, kernel_size=1, activation="relu")(x)
+    x = layers.Dropout(dropout)(x)
+    x = layers.Conv1D(filters=res.shape[-1], kernel_size=1)(x)
+    return x + res
+
+def build_transformer(input_shape, num_classes, head_size, num_heads, ff_dim, num_blocks, patch_size, dropout=0):
+    inputs = layers.Input(shape=input_shape)
+    # 将图像分割为Patch
+    patches = layers.Conv2D(filters=head_size, kernel_size=patch_size, strides=patch_size, padding="valid")(inputs)
+    patches = layers.Reshape((-1, head_size))(patches)
+    
+    # 添加位置编码
+    positions = tf.range(start=0, limit=patches.shape[1], delta=1)
+    position_embedding = layers.Embedding(input_dim=positions.shape[0], output_dim=head_size)(positions)
+    patches = patches + position_embedding
+    
+    # 多个Transformer块
+    for _ in range(num_blocks):
+        patches = transformer_block(patches, head_size, num_heads, ff_dim, dropout)
+    
+    # 输出层
+    representation = layers.LayerNormalization(epsilon=1e-6)(patches)
+    representation = layers.Flatten()(representation)
+    outputs = layers.Dense(num_classes, activation="softmax")(representation)
+    
+    model = Model(inputs, outputs)
+    return model
+
+input_shape = (128, 128, 3)
+num_classes = 10
+head_size = 256
+num_heads = 4
+ff_dim = 1024
+num_blocks = 4
+patch_size = 16
+dropout = 0.1
+
+model = build_transformer(input_shape, num_classes, head_size, num_heads, ff_dim, num_blocks, patch_size, dropout)
+model.summary()
