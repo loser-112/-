@@ -1,0 +1,18 @@
+from transformers import BertTokenizer, TFBertModel
+import tensorflow as tf
+
+# 加载BERT模型和分词器
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+bert_model = TFBertModel.from_pretrained('bert-base-uncased')
+
+# 临床数据预处理
+def preprocess_clinical_data(clinical_data):
+    inputs = tokenizer(clinical_data, return_tensors='tf', padding=True, truncation=True, max_length=128)
+    outputs = bert_model(inputs)
+    clinical_features = outputs.last_hidden_state[:, 0, :]  # 使用[CLS]标记的输出
+    return clinical_features
+
+# 示例临床数据
+clinical_data = ["Patient has a history of hepatitis B and presents with elevated liver enzymes."]
+
+processed_clinical_data = preprocess_clinical_data(clinical_data)
