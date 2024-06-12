@@ -1,0 +1,59 @@
+# 示例医生输入数据
+doctor_inputs = ["Doctor suggests further examination for a potential liver tumor."]
+processed_doctor_inputs = preprocess_clinical_data(doctor_inputs)
+from tensorflow.keras import layers, models
+
+# 构建教师模型
+def build_teacher_model(input_shape):
+    inputs = layers.Input(shape=input_shape)
+    x = layers.Dense(256, activation='relu')(inputs)
+    x = layers.Dense(128, activation='relu')(x)
+    outputs = layers.Dense(1, activation='sigmoid')(x)
+    model = models.Model(inputs, outputs)
+    return model
+
+# 构建学生模型
+def build_student_model(input_shape):
+    inputs = layers.Input(shape=input_shape)
+    x = layers.Dense(128, activation='relu')(inputs)
+    x = layers.Dense(64, activation='relu')(x)
+    outputs = layers.Dense(1, activation='sigmoid')(x)
+    model = models.Model(inputs, outputs)
+    return model
+
+# 构建和编译教师模型
+teacher_model = build_teacher_model(fused_features.shape[-1])
+teacher_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# 构建和编译学生模型
+student_model = build_student_model(fused_features.shape[-1])
+student_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+import tensorflow.keras.backend as K
+
+# 蒸馏损失函数
+def distillation_loss(y_true, y_pred, teacher_pred, alpha=0.1, temperature=10):
+    y_true_loss = K.binary_crossentropy(y_true, y_pred)
+    y_teacher_loss = K.categorical_crossentropy(K.softmax(teacher_pred / temperature), K.softmax(y_pred / temperature))
+    return alpha * y_true_loss + (1 - alpha) * y_teacher_loss
+
+# 训练教师模型
+teacher_model.fit(X_train, y_train, epochs=50, batch_size=16, validation_split=0.2)
+
+# 使用教师模型预测作为软标签
+teacher_predictions = teacher_model.predict(X_train)
+
+# 训练学生模型
+for epoch in range(50):
+    for i in range(len(X_train)):
+        with tf.GradientTape() as tape:
+            student_pred = student_model(X_train[i:i+1])
+            loss = distillation_loss(y_train[i:i+1], student_pred, teacher_predictions[i:i+1])
+        grads = tape.gradient(loss, student_model.trainable_weights)
+        student_model.optimizer.apply_gradients(zip(grads, student_model.trainable_weights))
+# 融合所有特征
+def integrate_features(image_features, clinical_features, doctor_features):
+    integrated_features = layers.concatenate([image_features, clinical_features, doctor_features], axis=-1)
+    return integrated_features
+
+# 示例数据融合
+integrated_features = integrate_features(fused_features, processed_clinical_data, processed_doctor_inputs)
