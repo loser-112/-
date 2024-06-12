@@ -1,0 +1,9 @@
+from tensorflow.keras import layers, models
+
+# 假设unet_model和transformer_model已经训练完毕
+
+# 提取影像特征
+def extract_features(image):
+    segmented_liver = unet_model.predict(image)
+    cancer_features = transformer_model.predict(segmented_liver)
+    return segmented_liver, cancer_features
