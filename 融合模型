@@ -1,0 +1,15 @@
+from tensorflow.keras import layers, models, Model
+
+# 假设unet_output和transformer_output是U-Net和Transformer的输出
+unet_output = layers.Input(shape=(128, 128, 64))  # 示例形状
+transformer_output = layers.Input(shape=(256,))  # 示例形状
+
+# 特征融合
+fused = layers.concatenate([layers.Flatten()(unet_output), transformer_output])
+
+# 最终分类层
+output = layers.Dense(num_classes, activation='softmax')(fused)
+
+# 构建融合模型
+fusion_model = Model(inputs=[unet_output, transformer_output], outputs=output)
+fusion_model.summary()
