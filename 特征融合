@@ -1,0 +1,11 @@
+# 融合特征
+def fuse_features(segmented_liver, cancer_features, clinical_features):
+    segmented_liver_flat = layers.Flatten()(segmented_liver)
+    cancer_features_flat = layers.Flatten()(cancer_features)
+    combined_features = layers.concatenate([segmented_liver_flat, cancer_features_flat, clinical_features], axis=-1)
+    return combined_features
+
+# 示例数据
+image = ...  # 输入的CT影像数据
+segmented_liver, cancer_features = extract_features(image)
+fused_features = fuse_features(segmented_liver, cancer_features, processed_clinical_data)
